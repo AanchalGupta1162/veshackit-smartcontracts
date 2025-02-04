@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.26;
 
 import {Project} from "Project.sol";
 
@@ -21,17 +21,20 @@ contract ProjectFactory{
 
         //creating NFT
          
+        // Hardcoded NFT contract address
+        address nftAddress = 0xd9145CCE52D386f254917e481eB44e9943F39138;
 
-        // Create a new Project instance with the provided parameters.
+        // Create a new Project instance with the provided parameters
         Project project = new Project(
-            totalProjects,  // The ID will be assigned automatically by Solidity
+            totalProjects,
             _name,
             msg.sender,
             _budget,
             _duration,
             _investmentLimit,
-            _daoLimit
-            );
+            _daoLimit,
+            nftAddress // Pass the hardcoded NFT contract address
+        );
         projectNametoprojectId[_name]=totalProjects;
         projectIdToAddress[totalProjects]=address(project);
 

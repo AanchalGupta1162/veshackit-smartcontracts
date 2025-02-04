@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-//import {MyNFT} from "NFTs.sol";
+import { MyNFT } from "NFTs.sol";
 
 contract Project is Ownable {
     uint256 public id;
@@ -17,6 +17,7 @@ contract Project is Ownable {
     uint public totalProposals = 0;
     uint public totalUser = 0;
     address[] public users;
+    bool public isProposalActive;
     bool public isDaoCreated=false;
 
     event investmentMade(
@@ -68,7 +69,8 @@ contract Project is Ownable {
         uint256 _budget,
         uint256 _duration,
         uint256 _investmentLimit,
-        uint256 _daoLimit
+        uint256 _daoLimit,
+        address _NFT
     ) Ownable(_founder) {
         id = _id;
         name = _name;
@@ -77,9 +79,7 @@ contract Project is Ownable {
         duration = _duration;
         investmentLimit = _investmentLimit;
         daoLimit = _daoLimit;
-        //  MyNFT nft = new MyNFT(msg.sender);
-
-        // NFT = address(nft);
+        NFT = _NFT;
     }
 
     struct dao {
@@ -133,6 +133,7 @@ contract Project is Ownable {
     mapping(address=>uint256) public userWallettoAmtInvested;
     event ProposalCreated(address indexed ProjectAddress, uint256 daoId, address indexed investor);
 
+    //change
     function invest(string memory userName) public payable {
         address userWallet = msg.sender;
         //If user has never invested before, create new user and check investment limit
@@ -150,9 +151,11 @@ contract Project is Ownable {
         if(userWallettoAmtInvested[userWallet]!=0)
         userWallettoAmtInvested[userWallet]+=msg.value;
         else{
-            sendNFT(userWallet,msg.value);
+            sendNFT(userWallet);
             userWallettoAmtInvested[userWallet]=msg.value;
         } 
+
+        //if dao is created add investor to dao
 
         //send NFT to user for the current investment       
         //emit invested amount
@@ -165,38 +168,15 @@ contract Project is Ownable {
         address userWallet
     );
 
-    function sendNFT(address userWallet,uint256 amountInvested) public {
-        // Logic to send NFTs to investors
+    function sendNFT(address userWallet
+                    // uint256 amountInvested
+                    ) public {
+        // Logic to send NFTs to investorsMyNFT nft = new MyNFT(msg.sender);
+        MyNFT nft = MyNFT(NFT);
+        nft.mint(userWallet, 2, "hello");
         // This can involve minting NFTs or transferring pre-minted ones
     }
 
-    // function createDao(string memory daoName, string memory daoDescription) public {
-    //     require(bytes(daoName).length > 0, "DAO name cannot be empty");
-    //     require(bytes(daoDescription).length > 0, "DAO description cannot be empty");
-
-    //     uint256 daoId = totalUser + 1;
-    //     dao memory newDao = dao({
-    //         project_id: id,
-    //         daoName: daoName,
-    //         daoDescription: daoDescription,
-    //         MembersCount: 0,
-    //         creator: msg.sender
-    //     });
-    //     daoIdtoDao[daoId] = newDao;
-    //     totalUser++;
-    //     // Emit an event for DAO creation
-    // }
-
-    // function addUsertoDao(uint256 daoId, address userWallet) public {
-    //     require(daoIdtoDao[daoId].creator != address(0), "DAO does not exist");
-    //     require(userWallettoUserId[userWallet] > 0, "User does not exist");
-
-    //     uint256 userId = userWallettoUserId[userWallet];
-    //     daoIdtoMembers[daoId].push(userId);
-    //     daoIdtoDao[daoId].MembersCount++;
-    //     userIdtoDaos[userId].push(daoId);
-    //     // Emit an event for adding a user to the DAO
-    // }
 
     function createProposal(
         string memory proposalTitleAndDesc,
@@ -246,6 +226,7 @@ contract Project is Ownable {
     function getOwner() public view returns(address){
         return founder;
     }
+
     //createDao, add investors, dao can be created only once, only owner can create dao, dao can be created after the dao limit
     function createDao(string memory daoName, string memory daoDescription) public {
         require(bytes(daoName).length > 0, "DAO name cannot be empty");
@@ -277,4 +258,6 @@ contract Project is Ownable {
         userIdtoDaos[userId].push(daoId);
         // Emit an event for adding a user to the DAO
     }
+
+    
 }
