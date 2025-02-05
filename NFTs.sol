@@ -16,7 +16,6 @@ contract MyNFT is ERC721URIStorage, Ownable {
      * @param tokenId Unique ID of the token
      * @param uri Metadata URI associated with the token
      */
-     
     function mint(address to, uint256 tokenId, string calldata uri) external onlyOwner {
         require(to != address(0), "Invalid address");
 
