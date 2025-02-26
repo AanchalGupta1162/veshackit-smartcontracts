@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-//import {MyNFT} from "NFTs.sol";
+import {MyNFT} from "NFTs.sol";
 
 contract Project is Ownable {
     uint256 public id;
@@ -14,6 +14,8 @@ contract Project is Ownable {
     uint256 public immutable investmentLimit;
     uint256 public immutable daoLimit;
     uint256 public currentInvestedAmount;
+    uint256 public daoId = 0;
+
     uint public totalProposals = 0;
     uint public totalUser = 0;
     address[] public users;
@@ -95,7 +97,7 @@ contract Project is Ownable {
         uint256 proposalId;
         uint256 proposerId;
         string proposalTitleAndDesc;
-        string proposalTpfsHash;
+        string proposalIpfsHash;
         uint256 votingThreshold;
         address votingTokenAddress;
         uint256 fundsNeeded;
@@ -145,6 +147,9 @@ contract Project is Ownable {
 
         require(currentInvestedAmount + msg.value <= budget, "Investment exceeds project budget");
         currentInvestedAmount += msg.value;
+
+        if(isDaoCreated==true)
+        addUsertoDao(userWallet);
 
         //update mapping of userWallet to totalAmountInvested
         if(userWallettoAmtInvested[userWallet]!=0)
@@ -200,12 +205,11 @@ contract Project is Ownable {
 
     function createProposal(
         string memory proposalTitleAndDesc,
-        string memory proposalTpfsHash,
+        string memory proposalIpfsHash,
         uint256 votingThreshold,
         address votingTokenAddress,
         uint256 fundsNeeded,
         uint256 beginningTime,
-        uint256 daoId,
         uint256 endingTime,
         uint256 passingThreshold,
         bool voteOnce
@@ -219,7 +223,7 @@ contract Project is Ownable {
             proposalId: totalProposals,
             proposerId: proposerId,
             proposalTitleAndDesc: proposalTitleAndDesc,
-            proposalTpfsHash: proposalTpfsHash,
+            proposalIpfsHash: proposalIpfsHash,
             votingThreshold: votingThreshold,
             votingTokenAddress: votingTokenAddress,
             fundsNeeded: fundsNeeded,
@@ -253,7 +257,6 @@ contract Project is Ownable {
         require(currentInvestedAmount > daoLimit, "DAO cannot be created before the dao limit");
         require(isDaoCreated == false,"DAO can only be created once");
 
-        uint256 daoId = 0;
         dao memory newDao = dao({
             project_id: id,
             daoName: daoName,
@@ -267,7 +270,7 @@ contract Project is Ownable {
         // Emit an event for DAO creation
     }
 
-    function addUsertoDao(uint256 daoId, address userWallet) public {
+    function addUsertoDao(address userWallet) public {
         require(daoIdtoDao[daoId].creator != address(0), "DAO does not exist");
         require(userWallettoUserId[userWallet] > 0, "User does not exist");
 
