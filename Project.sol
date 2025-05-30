@@ -108,6 +108,7 @@ contract Project is Ownable {
         uint256 MembersCount;
         address creator;
         address[] members;
+        //mapping (address=>uint256) balances;
     }
 
     struct proposal {
@@ -151,8 +152,7 @@ contract Project is Ownable {
     mapping(uint256 => uint256[]) public daoIdtoDocuments;
     mapping(address=>uint256) public userWallettoAmtInvested;
     mapping (uint256 => bool) public proposalIdToResult;
-
-
+    mapping (uint256=>VotingTokens) public userIdtoTokens;
 
     function invest(string memory userName) public payable {
         require(currentInvestedAmount + msg.value <= budget, "Investment exceeds project budget");
@@ -250,8 +250,20 @@ contract Project is Ownable {
         });
         daoIdtoDao[daoId] = newDao;
         totalUser++;
+
+        //mintTokens(daoId);
+
         // Emit an event for DAO creation
+        emit DAOCreated(daoId, daoName, founder);
+        
     }
+
+    // function mintTokens() internal {
+    //         VotingTokens token = new VotingTokens(name,name,totalUser*100);
+    //     for (uint256 i = 0; i < totalUser; i++) {
+
+    //     }   
+    // }
 
     function addUsertoDao(address userWallet) public {
         require(daoIdtoDao[daoId].creator != address(0), "DAO does not exist");
