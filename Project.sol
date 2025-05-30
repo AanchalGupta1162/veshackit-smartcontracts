@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {MyNFT} from "NFTs.sol";
+import {VotingTokens} from "VotingTokens.sol";
 
 contract Project is Ownable {
     uint256 public id;
@@ -152,6 +153,7 @@ contract Project is Ownable {
     mapping (uint256 => bool) public proposalIdToResult;
 
 
+
     function invest(string memory userName) public payable {
         require(currentInvestedAmount + msg.value <= budget, "Investment exceeds project budget");
         address userWallet = msg.sender;
@@ -206,7 +208,7 @@ contract Project is Ownable {
         bool voteOnce
     ) public onlyOwner {
         require(daoIdtoDao[daoId].creator != address(0), "DAO does not exist");
-
+         require(endingTime > 0, "The voting period cannot be 0");
         totalProposals++;
         uint256 proposerId = userWallettoUserId[msg.sender];
 
@@ -224,7 +226,6 @@ contract Project is Ownable {
             passingThreshold: passingThreshold,
             voteOnce: voteOnce
         });
-
         proposalIdtoProposal[totalProposals] = newProposal;
         daoIdtoProposals[daoId].push(totalProposals);
 
@@ -285,32 +286,85 @@ contract Project is Ownable {
     function getOwner() public view returns(address){
         return founder;
     }
+
+        function checkMembership(
+        uint256 _daoId,
+        address _callerWalletAddress
+    ) public view returns (bool) {
+        uint256 tempUserId = userWallettoUserId[_callerWalletAddress];
+        uint256 totalMembers = daoIdtoMembers[_daoId].length;
+        for (uint256 i = 0; i < totalMembers; i++) {
+            if (tempUserId == daoIdtoMembers[_daoId][i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function sqrt(uint256 x) internal pure returns (uint256 y) {
+        uint256 z = (x + 1) / 2;
+        y = x;
+        while (z < y) {
+            y = z;
+            z = (x / z + z) / 2;
+        }
+    }
+
+
+    function castVote(uint _proposalId, uint numTokens, bool _vote) external {
+    address funcCaller = msg.sender;
+    uint256 tempDaoId = proposalIdtoProposal[_proposalId].daoId;
+    uint256 userId = userWallettoUserId[funcCaller]; // Assumes mapping exists
+
+    require(checkMembership(tempDaoId, funcCaller), "Only members of the DAO can vote");
+    require(block.timestamp >= proposalIdtoProposal[_proposalId].beginningTime, "Voting has not started");
+    require(block.timestamp < proposalIdtoProposal[_proposalId].endingTime, "Voting time has ended");
+
+    if (proposalIdtoProposal[_proposalId].voteOnce) {
+        require(!hasVoted(userId, _proposalId), "User has already voted");
+    }
+
+    // Quadratic Voting: votes = sqrt(numTokens)
+    uint256 numVotes = sqrt(numTokens);
+    require(numVotes * numVotes == numTokens, "Tokens must be a perfect square");
+
+    if (_vote) {
+        quadraticYesMappings[tempDaoId][_proposalId] += numVotes;
+    } else {
+        quadraticNoMappings[tempDaoId][_proposalId] += numVotes;
+    }
+
+    // Mark user as having voted
+    proposalIdtoVoters[_proposalId].push(userId);
 }
 
-    // function createDao(string memory daoName, string memory daoDescription) public {
-    //     require(bytes(daoName).length > 0, "DAO name cannot be empty");
-    //     require(bytes(daoDescription).length > 0, "DAO description cannot be empty");
 
-    //     uint256 daoId = totalUser + 1;
-    //     dao memory newDao = dao({
-    //         project_id: id,
-    //         daoName: daoName,
-    //         daoDescription: daoDescription,
-    //         MembersCount: 0,
-    //         creator: msg.sender
-    //     });
-    //     daoIdtoDao[daoId] = newDao;
-    //     totalUser++;
-    //     // Emit an event for DAO creation
-    // }
+    function hasVoted(
+        uint256 _userId,
+        uint256 _proposalId
+    ) public view returns (bool) {
+        for (uint256 i = 0; i < proposalIdtoVoters[_proposalId].length; i++) {
+            if (_userId == proposalIdtoVoters[_proposalId][i]) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-    // function addUsertoDao(uint256 daoId, address userWallet) public {
-    //     require(daoIdtoDao[daoId].creator != address(0), "DAO does not exist");
-    //     require(userWallettoUserId[userWallet] > 0, "User does not exist");
+    function calculateProposalResult(uint256 _proposalId) public{
 
-    //     uint256 userId = userWallettoUserId[userWallet];
-    //     daoIdtoMembers[daoId].push(userId);
-    //     daoIdtoDao[daoId].MembersCount++;
-    //     userIdtoDaos[userId].push(daoId);
-    //     // Emit an event for adding a user to the DAO
-    // }
+    uint256 yesVotes = quadraticYesMappings[daoId][_proposalId];
+    uint256 noVotes = quadraticNoMappings[daoId][_proposalId];
+
+    if (yesVotes > noVotes) 
+        proposalIdToResult[_proposalId] = true;
+    else
+        proposalIdToResult[_proposalId] = false;
+    
+}
+
+
+
+}
+
+   
