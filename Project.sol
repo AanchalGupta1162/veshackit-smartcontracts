@@ -42,10 +42,20 @@ contract Project is Ownable {
         uint256 userId,
         address userWallet
     );
+    event UserCreated(
+        uint256 indexed userId,
+        string userName,
+        address userWallet
+    );
     event UserJoinedDAO(
         uint256 indexed daoId,
         uint256 userId,
         address userWallet
+    );
+    event ProposalCreated(
+        address indexed ProjectAddress, 
+        uint256 daoId, 
+        address indexed investor
     );
     event DocumentUploaded(
         uint256 indexed documentId,
@@ -62,6 +72,12 @@ contract Project is Ownable {
         uint256 userId,
         uint256 numTokens,
         uint256 voteChoice
+    );
+    // Add an event for fund withdrawal
+    event FundsWithdrawn(
+        uint256 indexed proposalId,
+        uint256 amountWithdrawn,
+        address indexed owner
     );
     constructor(
         uint256 _id,
@@ -133,9 +149,11 @@ contract Project is Ownable {
     mapping(uint256 => Document) public documentIdtoDocument;    
     mapping(uint256 => uint256[]) public daoIdtoDocuments;
     mapping(address=>uint256) public userWallettoAmtInvested;
-    event ProposalCreated(address indexed ProjectAddress, uint256 daoId, address indexed investor);
+    mapping (uint256 => bool) public proposalIdToResult;
+
 
     function invest(string memory userName) public payable {
+        require(currentInvestedAmount + msg.value <= budget, "Investment exceeds project budget");
         address userWallet = msg.sender;
         //If user has never invested before, create new user and check investment limit
         if(userWallettoUserId[userWallet]!=0){
@@ -145,7 +163,6 @@ contract Project is Ownable {
         emit UserCreated(totalUser,userName,userWallet);
         }
 
-        require(currentInvestedAmount + msg.value <= budget, "Investment exceeds project budget");
         currentInvestedAmount += msg.value;
 
         if(isDaoCreated==true)
@@ -164,44 +181,18 @@ contract Project is Ownable {
         emit investmentMade(totalUser, userName, userWallet,msg.value);
     }
 
-    event UserCreated(
-        uint256 indexed userId,
-        string userName,
-        address userWallet
-    );
+    function createUser(string memory _name, address userWallet) public {
+        require(userWallettoUserId[userWallet] == 0, "User already exists");
+        totalUser++;
+        userIdtoUser[totalUser] = _name;
+        userWallettoUserId[userWallet] = totalUser;
+    }
 
     function sendNFT(address userWallet,uint256 amountInvested) public {
         // Logic to send NFTs to investors
         // This can involve minting NFTs or transferring pre-minted ones
     }
 
-    // function createDao(string memory daoName, string memory daoDescription) public {
-    //     require(bytes(daoName).length > 0, "DAO name cannot be empty");
-    //     require(bytes(daoDescription).length > 0, "DAO description cannot be empty");
-
-    //     uint256 daoId = totalUser + 1;
-    //     dao memory newDao = dao({
-    //         project_id: id,
-    //         daoName: daoName,
-    //         daoDescription: daoDescription,
-    //         MembersCount: 0,
-    //         creator: msg.sender
-    //     });
-    //     daoIdtoDao[daoId] = newDao;
-    //     totalUser++;
-    //     // Emit an event for DAO creation
-    // }
-
-    // function addUsertoDao(uint256 daoId, address userWallet) public {
-    //     require(daoIdtoDao[daoId].creator != address(0), "DAO does not exist");
-    //     require(userWallettoUserId[userWallet] > 0, "User does not exist");
-
-    //     uint256 userId = userWallettoUserId[userWallet];
-    //     daoIdtoMembers[daoId].push(userId);
-    //     daoIdtoDao[daoId].MembersCount++;
-    //     userIdtoDaos[userId].push(daoId);
-    //     // Emit an event for adding a user to the DAO
-    // }
 
     function createProposal(
         string memory proposalTitleAndDesc,
@@ -240,16 +231,7 @@ contract Project is Ownable {
         emit ProposalCreated(address(this), daoId, msg.sender);
     }
 
-    function createUser(string memory _name, address userWallet) public {
-        require(userWallettoUserId[userWallet] == 0, "User already exists");
-        totalUser++;
-        userIdtoUser[totalUser] = _name;
-        userWallettoUserId[userWallet] = totalUser;
-    }
 
-    function getOwner() public view returns(address){
-        return founder;
-    }
     //createDao, add investors, dao can be created only once, only owner can create dao, dao can be created after the dao limit
     function createDao(string memory daoName, string memory daoDescription) public {
         require(bytes(daoName).length > 0, "DAO name cannot be empty");
@@ -280,4 +262,55 @@ contract Project is Ownable {
         userIdtoDaos[userId].push(daoId);
         // Emit an event for adding a user to the DAO
     }
+
+    // Function to set the result of a proposal
+    function setProposalResult(uint256 proposalId, bool result) public onlyOwner {
+        require(proposalIdtoProposal[proposalId].proposalId != 0, "Proposal does not exist");
+        proposalIdToResult[proposalId] = result;
+    }
+    
+    // Function to withdraw funds based on proposal result
+    function withdrawFunds(uint256 proposalId) public onlyOwner {
+        require(proposalIdToResult[proposalId] == true, "Proposal did not pass");
+        proposal memory selectedProposal = proposalIdtoProposal[proposalId];
+        require(selectedProposal.fundsNeeded <= address(this).balance, "Insufficient contract balance");
+
+        // Transfer the funds to the owner
+        payable(msg.sender).transfer(selectedProposal.fundsNeeded);
+
+        // Emit an event for fund withdrawal
+        emit FundsWithdrawn(proposalId, selectedProposal.fundsNeeded, msg.sender);
+    }
+
+    function getOwner() public view returns(address){
+        return founder;
+    }
 }
+
+    // function createDao(string memory daoName, string memory daoDescription) public {
+    //     require(bytes(daoName).length > 0, "DAO name cannot be empty");
+    //     require(bytes(daoDescription).length > 0, "DAO description cannot be empty");
+
+    //     uint256 daoId = totalUser + 1;
+    //     dao memory newDao = dao({
+    //         project_id: id,
+    //         daoName: daoName,
+    //         daoDescription: daoDescription,
+    //         MembersCount: 0,
+    //         creator: msg.sender
+    //     });
+    //     daoIdtoDao[daoId] = newDao;
+    //     totalUser++;
+    //     // Emit an event for DAO creation
+    // }
+
+    // function addUsertoDao(uint256 daoId, address userWallet) public {
+    //     require(daoIdtoDao[daoId].creator != address(0), "DAO does not exist");
+    //     require(userWallettoUserId[userWallet] > 0, "User does not exist");
+
+    //     uint256 userId = userWallettoUserId[userWallet];
+    //     daoIdtoMembers[daoId].push(userId);
+    //     daoIdtoDao[daoId].MembersCount++;
+    //     userIdtoDaos[userId].push(daoId);
+    //     // Emit an event for adding a user to the DAO
+    // }
