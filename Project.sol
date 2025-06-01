@@ -237,7 +237,7 @@ contract Project is Ownable {
 
 
     //createDao, add investors, dao can be created only once, only owner can create dao, dao can be created after the dao limit
-    function createDao(string memory daoName, string memory daoDescription) public {
+    function createDao(string memory daoName, string memory daoDescription, uint256 amountTokens, string memory tokenName, string memory tokenSymbol) public onlyOwner{
         // require(bytes(daoName).length > 0 && bytes(daoDescription).length > 0, "DAO name or description cannot be empty");
         // require(currentInvestedAmount > daoLimit && isDaoCreated == false, "DAO limit not reached or dao already created");
 
@@ -252,10 +252,10 @@ contract Project is Ownable {
         daoIdtoDao[daoId] = newDao;
         totalUser++;
 
-        VotingTokens vt = new VotingTokens(name,name,1);
+        VotingTokens vt = new VotingTokens(tokenName, tokenSymbol);
         tokenAddress = address(vt);
         for(uint i=0;i<totalUser;i++){
-            vt.transferTokens(users[i]);
+            vt.transferTokens(users[i], amountTokens);
         }
 
         // Emit an event for DAO creation
@@ -263,14 +263,8 @@ contract Project is Ownable {
         
     }
 
-    // function mintTokens() internal {
-    //         VotingTokens token = new VotingTokens(name,name,totalUser*100);
-    //     for (uint256 i = 0; i < totalUser; i++) {
 
-    //     }   
-    // }
-
-    function addUsertoDao(address userWallet) public {
+    function addUsertoDao(address userWallet) public onlyOwner {
         // require(daoIdtoDao[daoId].creator != address(0), "DAO does not exist");
         // require(userWallettoUserId[userWallet] > 0, "User does not exist");
 
@@ -279,7 +273,7 @@ contract Project is Ownable {
         daoIdtoDao[daoId].MembersCount++;
         userIdtoDaos[userId].push(daoId);
         VotingTokens vt = VotingTokens(tokenAddress);
-        vt.transferTokens(userWallet);
+        vt.transferTokens(userWallet, 10);
         // Emit an event for adding a user to the DAO
     }
 
@@ -331,32 +325,32 @@ contract Project is Ownable {
 
 
     function castVote(uint _proposalId, uint numTokens, bool _vote) external {
-    address funcCaller = msg.sender;
-    uint256 tempDaoId = proposalIdtoProposal[_proposalId].daoId;
-    uint256 userId = userWallettoUserId[funcCaller]; // Assumes mapping exists
+        address funcCaller = msg.sender;
+        uint256 tempDaoId = proposalIdtoProposal[_proposalId].daoId;
+        uint256 userId = userWallettoUserId[funcCaller]; // Assumes mapping exists
 
-    require(checkMembership(tempDaoId, funcCaller), "Only members of the DAO can vote");
-    require(block.timestamp >= proposalIdtoProposal[_proposalId].beginningTime, "Voting has not started");
-    require(block.timestamp < proposalIdtoProposal[_proposalId].endingTime, "Voting time has ended");
+        require(checkMembership(tempDaoId, funcCaller), "Only members of the DAO can vote");
+        require(block.timestamp >= proposalIdtoProposal[_proposalId].beginningTime, "Voting has not started");
+        require(block.timestamp < proposalIdtoProposal[_proposalId].endingTime, "Voting time has ended");
 
-    if (proposalIdtoProposal[_proposalId].voteOnce) {
-        // require(!hasVoted(userId, _proposalId), "User has already voted");
+        if (proposalIdtoProposal[_proposalId].voteOnce) {
+            // require(!hasVoted(userId, _proposalId), "User has already voted");
+        }
+        VotingTokens vt = VotingTokens(tokenAddress);
+        vt.transferFrom(funcCaller,address(this),numTokens);
+        // Quadratic Voting: votes = sqrt(numTokens)
+        uint256 numVotes = sqrt(numTokens);
+        //require(numVotes * numVotes == numTokens, "Tokens must be a perfect square");
+
+        if (_vote) {
+            quadraticYesMappings[tempDaoId][_proposalId] += numVotes;
+        } else {
+            quadraticNoMappings[tempDaoId][_proposalId] += numVotes;
+        }
+
+        // Mark user as having voted
+        proposalIdtoVoters[_proposalId].push(userId);
     }
-    VotingTokens vt = VotingTokens(tokenAddress);
-    vt.transferFrom(funcCaller,address(this),numTokens);
-    // Quadratic Voting: votes = sqrt(numTokens)
-    uint256 numVotes = sqrt(numTokens);
-    //require(numVotes * numVotes == numTokens, "Tokens must be a perfect square");
-
-    if (_vote) {
-        quadraticYesMappings[tempDaoId][_proposalId] += numVotes;
-    } else {
-        quadraticNoMappings[tempDaoId][_proposalId] += numVotes;
-    }
-
-    // Mark user as having voted
-    proposalIdtoVoters[_proposalId].push(userId);
-}
 
 
     function hasVoted(

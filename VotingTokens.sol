@@ -5,15 +5,16 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  contract VotingTokens is ERC20 {
    constructor(
         string memory _tokenName,
-        string memory _tokenSymbol,
-        uint256 _totalSupply
+        string memory _tokenSymbol
+     //    uint256 _totalSupply
    ) ERC20(_tokenName, _tokenSymbol) {
+
    } 
 
    //mapping(address => uint) public balances;
-   function transferTokens(address members) public {
+   function transferTokens(address members, uint256 amount) public {
     
-        _mint(members, 10 ** decimals());
+        _mint(members, amount * (10 ** decimals()));
     
    }
 
@@ -27,7 +28,4 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 //              balances[members] = balances[members] - amount ** decimals();   
 //    }
 
-//    function checkBalance(address user) public view returns (uint) {
-//        return balances[user];
-//     }
  }
