@@ -2,20 +2,22 @@
 pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import {MyNFT} from "NFTs.sol";
+// import {MyNFT} from "NFTs.sol";
 import {VotingTokens} from "VotingTokens.sol";
+
 
 contract Project is Ownable {
     uint256 public id;
     string public name;
     address public immutable founder;
-    address public immutable NFT;
+    //address public immutable NFT;
     uint256 public immutable budget;
     uint256 public immutable duration;
     uint256 public immutable investmentLimit;
     uint256 public immutable daoLimit;
     uint256 public currentInvestedAmount;
     uint256 public daoId = 0;
+    address public tokenAddress;
 
     uint public totalProposals = 0;
     uint public totalUser = 0;
@@ -48,26 +50,26 @@ contract Project is Ownable {
         string userName,
         address userWallet
     );
-    event UserJoinedDAO(
-        uint256 indexed daoId,
-        uint256 userId,
-        address userWallet
-    );
+    // event UserJoinedDAO(
+    //     uint256 indexed daoId,
+    //     uint256 userId,
+    //     address userWallet
+    // );
     event ProposalCreated(
         address indexed ProjectAddress, 
         uint256 daoId, 
         address indexed investor
     );
-    event DocumentUploaded(
-        uint256 indexed documentId,
-        uint256 daoId,
-        address uploaderWallet
-    );
-    event VoteCast(
-        uint256 indexed proposalId,
-        uint256 userId,
-        uint256 voteChoice
-    );
+    // event DocumentUploaded(
+    //     uint256 indexed documentId,
+    //     uint256 daoId,
+    //     address uploaderWallet
+    // );
+    // event VoteCast(
+    //     uint256 indexed proposalId,
+    //     uint256 userId,
+    //     uint256 voteChoice
+    // );
     event QVVoteCast(
         uint256 indexed proposalId,
         uint256 userId,
@@ -126,14 +128,14 @@ contract Project is Ownable {
         bool voteOnce;
     }
 
-    struct Document {
-        uint256 documentId;
-        string documentTitle;
-        string documentDescription;
-        string ipfsHash;
-        uint256 uploaderId;
-        uint256 daoId;
-    }
+    // struct Document {
+    //     uint256 documentId;
+    //     string documentTitle;
+    //     string documentDescription;
+    //     string ipfsHash;
+    //     uint256 uploaderId;
+    //     uint256 daoId;
+    // }
 
     mapping(uint256 => string) public userIdtoUser;
     mapping(address => uint256) public userWallettoUserId;
@@ -142,20 +144,20 @@ contract Project is Ownable {
     mapping(uint256 => uint256[]) public daoIdtoMembers;
     mapping(uint256 => uint256[]) public daoIdtoProposals;
     mapping(uint256 => uint256[]) public proposalIdtoVoters;
-    mapping(uint256 => uint256[]) public proposalIdtoYesVoters;
-    mapping(uint256 => uint256[]) public proposalIdtoNoVoters;
-    mapping(uint256 => uint256[]) public proposalIdtoAbstainVoters;
+    // mapping(uint256 => uint256[]) public proposalIdtoYesVoters;
+    // mapping(uint256 => uint256[]) public proposalIdtoNoVoters;
+    // mapping(uint256 => uint256[]) public proposalIdtoAbstainVoters;
     mapping(uint256 => uint256[]) public userIdtoDaos;
     mapping(uint256 => mapping(uint256 => uint256)) public quadraticYesMappings;
     mapping(uint256 => mapping(uint256 => uint256)) public quadraticNoMappings;
-    mapping(uint256 => Document) public documentIdtoDocument;    
-    mapping(uint256 => uint256[]) public daoIdtoDocuments;
+    // mapping(uint256 => Document) public documentIdtoDocument;    
+    // mapping(uint256 => uint256[]) public daoIdtoDocuments;
     mapping(address=>uint256) public userWallettoAmtInvested;
     mapping (uint256 => bool) public proposalIdToResult;
-    mapping (uint256=>VotingTokens) public userIdtoTokens;
+    // mapping (uint256=>VotingTokens) public userIdtoTokens;
 
     function invest(string memory userName) public payable {
-        require(currentInvestedAmount + msg.value <= budget, "Investment exceeds project budget");
+       require(currentInvestedAmount + msg.value <= budget, "Investment exceeds project budget");
         address userWallet = msg.sender;
         //If user has never invested before, create new user and check investment limit
         if(userWallettoUserId[userWallet]!=0){
@@ -167,14 +169,15 @@ contract Project is Ownable {
 
         currentInvestedAmount += msg.value;
 
-        if(isDaoCreated==true)
-        addUsertoDao(userWallet);
+        if(isDaoCreated==true){
+            addUsertoDao(userWallet);
+        }
 
         //update mapping of userWallet to totalAmountInvested
         if(userWallettoAmtInvested[userWallet]!=0)
         userWallettoAmtInvested[userWallet]+=msg.value;
         else{
-            sendNFT(userWallet,msg.value);
+            //sendNFT(userWallet,msg.value);
             userWallettoAmtInvested[userWallet]=msg.value;
         } 
 
@@ -184,16 +187,16 @@ contract Project is Ownable {
     }
 
     function createUser(string memory _name, address userWallet) public {
-        require(userWallettoUserId[userWallet] == 0, "User already exists");
+        //require(userWallettoUserId[userWallet] == 0, "User already exists");
         totalUser++;
         userIdtoUser[totalUser] = _name;
         userWallettoUserId[userWallet] = totalUser;
     }
 
-    function sendNFT(address userWallet,uint256 amountInvested) public {
-        // Logic to send NFTs to investors
-        // This can involve minting NFTs or transferring pre-minted ones
-    }
+    // function sendNFT(address userWallet,uint256 amountInvested) public {
+    //     // Logic to send NFTs to investors
+    //     // This can involve minting NFTs or transferring pre-minted ones
+    // }
 
 
     function createProposal(
@@ -207,8 +210,8 @@ contract Project is Ownable {
         uint256 passingThreshold,
         bool voteOnce
     ) public onlyOwner {
-        require(daoIdtoDao[daoId].creator != address(0), "DAO does not exist");
-         require(endingTime > 0, "The voting period cannot be 0");
+        // require(daoIdtoDao[daoId].creator != address(0), "DAO does not exist");
+        // require(endingTime > 0, "The voting period cannot be 0");
         totalProposals++;
         uint256 proposerId = userWallettoUserId[msg.sender];
 
@@ -235,10 +238,8 @@ contract Project is Ownable {
 
     //createDao, add investors, dao can be created only once, only owner can create dao, dao can be created after the dao limit
     function createDao(string memory daoName, string memory daoDescription) public {
-        require(bytes(daoName).length > 0, "DAO name cannot be empty");
-        require(bytes(daoDescription).length > 0, "DAO description cannot be empty");
-        require(currentInvestedAmount > daoLimit, "DAO cannot be created before the dao limit");
-        require(isDaoCreated == false,"DAO can only be created once");
+        // require(bytes(daoName).length > 0 && bytes(daoDescription).length > 0, "DAO name or description cannot be empty");
+        // require(currentInvestedAmount > daoLimit && isDaoCreated == false, "DAO limit not reached or dao already created");
 
         dao memory newDao = dao({
             project_id: id,
@@ -251,7 +252,11 @@ contract Project is Ownable {
         daoIdtoDao[daoId] = newDao;
         totalUser++;
 
-        //mintTokens(daoId);
+        VotingTokens vt = new VotingTokens(name,name,1);
+        tokenAddress = address(vt);
+        for(uint i=0;i<totalUser;i++){
+            vt.transferTokens(users[i]);
+        }
 
         // Emit an event for DAO creation
         emit DAOCreated(daoId, daoName, founder);
@@ -266,13 +271,15 @@ contract Project is Ownable {
     // }
 
     function addUsertoDao(address userWallet) public {
-        require(daoIdtoDao[daoId].creator != address(0), "DAO does not exist");
-        require(userWallettoUserId[userWallet] > 0, "User does not exist");
+        // require(daoIdtoDao[daoId].creator != address(0), "DAO does not exist");
+        // require(userWallettoUserId[userWallet] > 0, "User does not exist");
 
         uint256 userId = userWallettoUserId[userWallet];
         daoIdtoMembers[daoId].push(userId);
         daoIdtoDao[daoId].MembersCount++;
         userIdtoDaos[userId].push(daoId);
+        VotingTokens vt = VotingTokens(tokenAddress);
+        vt.transferTokens(userWallet);
         // Emit an event for adding a user to the DAO
     }
 
@@ -286,7 +293,7 @@ contract Project is Ownable {
     function withdrawFunds(uint256 proposalId) public onlyOwner {
         require(proposalIdToResult[proposalId] == true, "Proposal did not pass");
         proposal memory selectedProposal = proposalIdtoProposal[proposalId];
-        require(selectedProposal.fundsNeeded <= address(this).balance, "Insufficient contract balance");
+        // require(selectedProposal.fundsNeeded <= address(this).balance, "Insufficient contract balance");
 
         // Transfer the funds to the owner
         payable(msg.sender).transfer(selectedProposal.fundsNeeded);
@@ -333,12 +340,13 @@ contract Project is Ownable {
     require(block.timestamp < proposalIdtoProposal[_proposalId].endingTime, "Voting time has ended");
 
     if (proposalIdtoProposal[_proposalId].voteOnce) {
-        require(!hasVoted(userId, _proposalId), "User has already voted");
+        // require(!hasVoted(userId, _proposalId), "User has already voted");
     }
-
+    VotingTokens vt = VotingTokens(tokenAddress);
+    vt.transferFrom(funcCaller,address(this),numTokens);
     // Quadratic Voting: votes = sqrt(numTokens)
     uint256 numVotes = sqrt(numTokens);
-    require(numVotes * numVotes == numTokens, "Tokens must be a perfect square");
+    //require(numVotes * numVotes == numTokens, "Tokens must be a perfect square");
 
     if (_vote) {
         quadraticYesMappings[tempDaoId][_proposalId] += numVotes;
