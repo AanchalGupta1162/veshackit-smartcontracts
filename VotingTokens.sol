@@ -6,26 +6,10 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
    constructor(
         string memory _tokenName,
         string memory _tokenSymbol
-     //    uint256 _totalSupply
    ) ERC20(_tokenName, _tokenSymbol) {
 
    } 
-
-   //mapping(address => uint) public balances;
    function transferTokens(address members, uint256 amount) public {
-    
-        _mint(members, amount * (10 ** decimals()));
-    
+     _mint(members, amount * (10 ** decimals()));
    }
-
-//    function transferTokesSingle(address members) public {
-//     _mint(members, 10 ** decimals());
-//      balances[members] = balances[members] + 10 ** decimals();
-//    }
-
-//    function burnTokens(address members,uint256 amount) public{
-//             _burn(members, amount ** decimals());
-//              balances[members] = balances[members] - amount ** decimals();   
-//    }
-
  }
