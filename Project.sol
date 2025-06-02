@@ -107,7 +107,6 @@ contract Project is Ownable {
         uint256 beginningTime;
         uint256 daoId;
         uint256 endingTime;
-        uint256 passingThreshold;
         bool voteOnce;
     }
 
@@ -119,6 +118,8 @@ contract Project is Ownable {
     mapping(uint256 => uint256[]) public daoIdtoMembers;
     mapping(uint256 => uint256[]) public daoIdtoProposals;
     mapping(uint256 => uint256[]) public proposalIdtoVoters;
+    //mapping(uint256 => uint256[]) public proposalIdtoYesVoters;
+    // mapping(uint256 => uint256[]) public proposalIdtoNoVoters;
     mapping(uint256 => uint256[]) public userIdtoDaos;
     mapping(uint256 => mapping(uint256 => uint256)) public quadraticYesMappings;
     mapping(uint256 => mapping(uint256 => uint256)) public quadraticNoMappings;
@@ -128,8 +129,7 @@ contract Project is Ownable {
 
     
     function invest(string memory userName) public payable {
-        require(msg.value >= investmentLimit, "Investment must meet the minimum investment limit");
-        require(currentInvestedAmount + msg.value <= budget, "Investment exceeds project budget");
+        require(msg.value >= investmentLimit && currentInvestedAmount + msg.value <= budget, "Investment does not meet the minimum investment limit or it exceeds project budget limit");
         address userWallet = msg.sender;
         //If user has never invested before, create new user and check investment limit
         if(userWallettoUserId[userWallet] == 0){
@@ -170,7 +170,7 @@ contract Project is Ownable {
         uint256 amountTokens, 
         string memory tokenName, 
         string memory tokenSymbol) public onlyOwner{
-        // require(currentInvestedAmount > daoLimit && isDaoCreated == false, "DAO limit not reached or dao already created");
+        require(currentInvestedAmount > daoLimit && isDaoCreated == false, "DAO limit not reached or dao already created");
 
         dao memory newDao = dao({
             project_id: id,
@@ -217,7 +217,6 @@ contract Project is Ownable {
         uint256 fundsNeeded,
         uint256 beginningTime,
         uint256 endingTime,
-        uint256 passingThreshold,
         bool voteOnce
     ) public onlyOwner {
         totalProposals++;
@@ -227,12 +226,11 @@ contract Project is Ownable {
             proposalId: totalProposals,
             proposerId: proposerId,
             proposalTitleAndDesc: proposalTitleAndDesc,
-            votingThreshold: votingThreshold,
-            fundsNeeded: fundsNeeded,
+            votingThreshold: votingThreshold * 1000000000000000000,
+            fundsNeeded: fundsNeeded * 1000000000000000000,
             beginningTime: beginningTime,
             daoId: daoId,
             endingTime: endingTime,
-            passingThreshold: passingThreshold,
             voteOnce: voteOnce
         });
         proposalIdtoProposal[totalProposals] = newProposal;
@@ -245,13 +243,14 @@ contract Project is Ownable {
 
         VotingTokens vt = VotingTokens(tokenAddress);
         address funcCaller = msg.sender;
+        numTokens = numTokens  * 1000000000000000000;
         uint256 userId = userWallettoUserId[funcCaller]; // Assumes mapping exists
         uint256 tempDaoId = proposalIdtoProposal[_proposalId].daoId;
         if (proposalIdtoProposal[_proposalId].voteOnce) {
-            require(!hasVoted(userId, _proposalId) || checkMembership(tempDaoId, funcCaller), "User has already voted or you arent a member");
+            require(!hasVoted(userId, _proposalId) && checkMembership(tempDaoId, funcCaller), "User has already voted or you arent a member");
         }
-        require(vt.balanceOf(funcCaller) > numTokens || numTokens >= proposalIdtoProposal[_proposalId].votingThreshold,"Insufficient tokens");
-        require(block.timestamp >= proposalIdtoProposal[_proposalId].beginningTime || block.timestamp < proposalIdtoProposal[_proposalId].endingTime, "Voting isn't available");
+        require(vt.balanceOf(funcCaller) >= numTokens && numTokens >= proposalIdtoProposal[_proposalId].votingThreshold,"Insufficient tokens");
+        require(block.timestamp >= proposalIdtoProposal[_proposalId].beginningTime && block.timestamp < proposalIdtoProposal[_proposalId].endingTime, "Voting isn't available");
 
 
 
@@ -303,8 +302,7 @@ contract Project is Ownable {
 
     function calculateProposalResult(uint256 _proposalId) public{
         proposal memory tempProposal = proposalIdtoProposal[_proposalId];
-        require(block.timestamp > proposalIdtoProposal[_proposalId].endingTime, "Voting hasn't ended");
-        require(!proposalToResultCalculated[_proposalId] || tempProposal.proposerId != 0, "Result is already calculated or proposal does not exist");
+        require(block.timestamp > proposalIdtoProposal[_proposalId].endingTime && !proposalToResultCalculated[_proposalId] && tempProposal.proposerId != 0, "Voting hasn't ended or Result is already calculated or proposal does not exist");
         
         uint256 yesVotes = quadraticYesMappings[daoId][_proposalId];
         uint256 noVotes = quadraticNoMappings[daoId][_proposalId];
@@ -324,7 +322,7 @@ contract Project is Ownable {
     // Function to withdraw funds based on proposal result
     function withdrawFunds(uint256 proposalId) public onlyOwner {
         proposal memory selectedProposal = proposalIdtoProposal[proposalId];
-        require(proposalIdToResult[proposalId] == true || selectedProposal.fundsNeeded < address(this).balance, "Proposal did not pass or insufficient contract balance");
+        require(proposalIdToResult[proposalId] == true || selectedProposal.fundsNeeded <= address(this).balance, "Proposal did not pass or insufficient contract balance");
 
         // Transfer the funds to the owner
         payable(msg.sender).transfer(selectedProposal.fundsNeeded);
@@ -336,6 +334,9 @@ contract Project is Ownable {
     function getOwner() public view returns(address){
         return founder;
     }
-}
 
-   
+    function getProposalResult(uint256 proposalId) public view returns (bool _result) {
+        return proposalIdToResult[proposalId];
+    }
+
+}
