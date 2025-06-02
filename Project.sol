@@ -6,7 +6,7 @@ import {VotingTokens} from "VotingTokens.sol";
 
 
 contract Project is Ownable {
-    uint256 public id;
+    uint256 public immutable id;
     string public name;
     address public immutable founder;
     uint256 public immutable budget;
@@ -156,7 +156,7 @@ contract Project is Ownable {
         emit investmentMade(totalUser, userName, userWallet,msg.value);
     }
 
-    function createUser(string memory _name, address userWallet) public {
+    function createUser(string memory _name, address userWallet) internal {
         //require(userWallettoUserId[userWallet] == 0, "User already exists");
         totalUser++;
         userIdtoUser[totalUser] = _name;
@@ -243,7 +243,7 @@ contract Project is Ownable {
 
         VotingTokens vt = VotingTokens(tokenAddress);
         address funcCaller = msg.sender;
-        numTokens = numTokens  * 1000000000000000000;
+        numTokens = numTokens * (10 ** 18);
         uint256 userId = userWallettoUserId[funcCaller]; // Assumes mapping exists
         uint256 tempDaoId = proposalIdtoProposal[_proposalId].daoId;
         if (proposalIdtoProposal[_proposalId].voteOnce) {
@@ -300,7 +300,7 @@ contract Project is Ownable {
         return false;
     }
 
-    function calculateProposalResult(uint256 _proposalId) public{
+    function calculateProposalResult(uint256 _proposalId) external onlyOwner {
         proposal memory tempProposal = proposalIdtoProposal[_proposalId];
         require(block.timestamp > proposalIdtoProposal[_proposalId].endingTime && !proposalToResultCalculated[_proposalId] && tempProposal.proposerId != 0, "Voting hasn't ended or Result is already calculated or proposal does not exist");
         
@@ -320,7 +320,7 @@ contract Project is Ownable {
     }
 
     // Function to withdraw funds based on proposal result
-    function withdrawFunds(uint256 proposalId) public onlyOwner {
+    function withdrawFunds(uint256 proposalId) external onlyOwner {
         proposal memory selectedProposal = proposalIdtoProposal[proposalId];
         require(proposalIdToResult[proposalId] == true || selectedProposal.fundsNeeded <= address(this).balance, "Proposal did not pass or insufficient contract balance");
 
