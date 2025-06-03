@@ -8,20 +8,19 @@ import {VotingTokens} from "VotingTokens.sol";
 contract Project is Ownable {
     uint256 public immutable id;
     string public name;
+    string public founderName;
     address public immutable founder;
     uint256 public immutable budget;
-    uint256 public immutable duration;
+    //uint256 public immutable duration;
     uint256 public immutable investmentLimit;
-    uint256 public immutable daoLimit;
     uint256 public currentInvestedAmount;
     uint256 public daoId = 0;
-    address public tokenAddress;
+    address public immutable tokenAddress;
     uint256 public totalTokens;
+    bool isDaoCreated = false;
 
     uint public totalProposals = 0;
     uint public totalUser = 0;
-    address[] public users;
-    bool public isDaoCreated=false;
 
     event investmentMade(
         uint256 indexed userId,
@@ -34,22 +33,13 @@ contract Project is Ownable {
         string daoName,
         address creatorWallet
     );
-    event ProposalCreated(
-        uint256 indexed proposalId,
-        uint256 daoId,
-        address proposerWallet
-    );
     event MemberAddedToDAO(
         uint256 indexed daoId,
         uint256 userId,
         address userWallet
     );
-    event UserCreated(
-        uint256 indexed userId,
-        string userName,
-        address userWallet
-    );
     event ProposalCreated(
+        uint256 indexed proposalId,
         address indexed ProjectAddress, 
         uint256 daoId, 
         address indexed investor
@@ -74,28 +64,41 @@ contract Project is Ownable {
     constructor(
         uint256 _id,
         string memory _name,
+        string memory _founderName,
         address _founder,
         uint256 _budget,
-        uint256 _duration,
+        //uint256 _duration,
         uint256 _investmentLimit,
-        uint256 _daoLimit
-    ) Ownable(_founder) {
+        // string memory daoName, 
+        // string memory daoDescription, 
+        // uint256 amountTokens,
+        string memory tokenName,  
+        string memory tokenSymbol
+        )
+        Ownable(_founder) {
         id = _id;
         name = _name;
+        founderName = _founderName;
         founder = _founder;
         budget = _budget;
-        duration = _duration;
+        //duration = _duration;
+        // amountTokens++;
+        // daoName="";
+        // daoDescription="";
+        // tokenName="";
+        // tokenSymbol="";
         investmentLimit = _investmentLimit;
-        daoLimit = _daoLimit;
+        VotingTokens vt = new VotingTokens(tokenName,tokenSymbol);
+        tokenAddress = address(vt);
+        // createDao(daoName, daoDescription, amountTokens, tokenName, tokenSymbol);
+        // addUsertoDao(founderName,founder);
     }
 
     struct dao {
         uint256 project_id;
         string daoName;
         string daoDescription;
-        uint256 MembersCount;
-        address creator;
-        address[] members;
+        uint256 amountTokens;
     }
 
     struct proposal {
@@ -115,11 +118,9 @@ contract Project is Ownable {
     mapping(address => uint256) public userWallettoUserId;
     mapping(uint256 => dao) public daoIdtoDao;
     mapping(uint256 => proposal) public proposalIdtoProposal;
-    mapping(uint256 => uint256[]) public daoIdtoMembers;
+    mapping(uint256 => address) public daoIdtoMembers;
     mapping(uint256 => uint256[]) public daoIdtoProposals;
     mapping(uint256 => uint256[]) public proposalIdtoVoters;
-    //mapping(uint256 => uint256[]) public proposalIdtoYesVoters;
-    // mapping(uint256 => uint256[]) public proposalIdtoNoVoters;
     mapping(uint256 => uint256[]) public userIdtoDaos;
     mapping(uint256 => mapping(uint256 => uint256)) public quadraticYesMappings;
     mapping(uint256 => mapping(uint256 => uint256)) public quadraticNoMappings;
@@ -129,20 +130,17 @@ contract Project is Ownable {
 
     
     function invest(string memory userName) public payable {
+        require(isDaoCreated==true,"Dao has not been created");
         require(msg.value >= investmentLimit && currentInvestedAmount + msg.value <= budget, "Investment does not meet the minimum investment limit or it exceeds project budget limit");
         address userWallet = msg.sender;
+        
         //If user has never invested before, create new user and check investment limit
         if(userWallettoUserId[userWallet] == 0){
-            createUser(userName,userWallet);
             //emit user creation
-            emit UserCreated(totalUser,userName,userWallet);
+            addUsertoDao(userName,userWallet);
         }
 
         currentInvestedAmount += msg.value;
-
-        if(isDaoCreated==true){
-            addUsertoDao(userWallet);
-        }
 
         //update mapping of userWallet to totalAmountInvested
         if(userWallettoAmtInvested[userWallet]!=0)
@@ -156,57 +154,42 @@ contract Project is Ownable {
         emit investmentMade(totalUser, userName, userWallet,msg.value);
     }
 
-    function createUser(string memory _name, address userWallet) internal {
-        //require(userWallettoUserId[userWallet] == 0, "User already exists");
-        totalUser++;
-        userIdtoUser[totalUser] = _name;
-        userWallettoUserId[userWallet] = totalUser;
-    }
+    
 
     //createDao, add investors, dao can be created only once, only owner can create dao, dao can be created after the dao limit
     function createDao(
         string memory daoName, 
         string memory daoDescription, 
-        uint256 amountTokens, 
-        string memory tokenName, 
-        string memory tokenSymbol) public onlyOwner{
-        require(currentInvestedAmount > daoLimit && isDaoCreated == false, "DAO limit not reached or dao already created");
-
+        uint256 amountTokens
+        // string memory tokenName, 
+        // string memory tokenSymbol
+        ) public onlyOwner{
         dao memory newDao = dao({
             project_id: id,
             daoName: daoName,
             daoDescription: daoDescription,
-            MembersCount: totalUser,
-            creator: founder,
-            members: users
+            amountTokens: amountTokens
         });
         daoIdtoDao[++daoId] = newDao;
-        totalUser++;
-
-        VotingTokens vt = new VotingTokens(tokenName, tokenSymbol);
-        tokenAddress = address(vt);
-        totalTokens = amountTokens;
-        for(uint i=0;i<totalUser;i++){
-            vt.transferTokens(users[i], amountTokens);
-        }
-
+        addUsertoDao(founderName, founder);
+        
         // Emit an event for DAO creation
         emit DAOCreated(daoId, daoName, founder);
         
     }
 
 
-    function addUsertoDao(address userWallet) internal {
-
-        uint256 userId = userWallettoUserId[userWallet];
-        daoIdtoMembers[daoId].push(userId);
-        daoIdtoDao[daoId].MembersCount++;
-        userIdtoDaos[userId].push(daoId);
+    function addUsertoDao(string memory userName,address userWallet) internal {
+        totalUser++;
+        userIdtoUser[totalUser]=userName;
+        userWallettoUserId[userWallet]=totalUser;
+        daoIdtoMembers[daoId]=userWallet;
+        userIdtoDaos[totalUser].push(daoId);
         VotingTokens vt = VotingTokens(tokenAddress);
-        vt.transferTokens(userWallet, totalTokens);
+        vt.transferTokens(userWallet, daoIdtoDao[id].amountTokens);
 
         // Emit an event for adding a user to the DAO
-        emit MemberAddedToDAO(daoId, userId, userWallet);
+        emit MemberAddedToDAO(daoId, totalUser, userWallet);
         
     }
 
@@ -227,7 +210,7 @@ contract Project is Ownable {
             proposerId: proposerId,
             proposalTitleAndDesc: proposalTitleAndDesc,
             votingThreshold: votingThreshold * 1000000000000000000,
-            fundsNeeded: fundsNeeded * 1000000000000000000,
+            fundsNeeded: fundsNeeded,
             beginningTime: beginningTime,
             daoId: daoId,
             endingTime: endingTime,
@@ -236,7 +219,7 @@ contract Project is Ownable {
         proposalIdtoProposal[totalProposals] = newProposal;
         daoIdtoProposals[daoId].push(totalProposals);
 
-        emit ProposalCreated(address(this), daoId, msg.sender);
+        // emit ProposalCreated(address(this), daoId, msg.sender);
     }
 
     function castVote(uint _proposalId, uint numTokens, bool _vote) external {
@@ -277,15 +260,13 @@ contract Project is Ownable {
         }
     }
 
-    function checkMembership( uint256 _daoId, address _callerWalletAddress ) public view returns (bool) {
-        uint256 tempUserId = userWallettoUserId[_callerWalletAddress];
-        uint256 totalMembers = daoIdtoDao[_daoId].MembersCount;
-        for (uint256 i = 0; i < totalMembers; i++) {
-            if (tempUserId == daoIdtoMembers[_daoId][i]) {
+    function checkMembership( uint256 _daoId, address _callerWalletAddress ) internal view returns (bool b) {
+        uint256 ID = userWallettoUserId[_callerWalletAddress];
+        for (uint i = 0; i < userIdtoDaos[ID].length; i++){
+            if (_daoId == userIdtoDaos[ID][i]) {
                 return true;
             }
         }
-        return false;
     }
 
     function hasVoted(
