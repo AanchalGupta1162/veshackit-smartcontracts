@@ -19,11 +19,14 @@ contract ProjectFactory{
         uint256 _budget,
         // uint256 _duration,
         uint256 _investmentLimit,
+        uint256 investorForDAO,
         // string memory daoName, 
         // string memory daoDescription, 
         // uint256 amountTokens,
         string memory tokenName,  
-        string memory tokenSymbol
+        string memory tokenSymbol,
+        uint256 tokenAmount
+
         ) public {
         totalProjects++;
         require(projectNametoprojectId[_name]==0 && _investmentLimit<_budget,"Project with this name already exists or Limits set exceed the project budget");
@@ -40,8 +43,10 @@ contract ProjectFactory{
             // daoName, 
             // daoDescription,  
             // amountTokens,
+            investorForDAO,
             tokenName,    
-            tokenSymbol
+            tokenSymbol,
+            tokenAmount
         );
         emit ProjectCreated(totalProjects, msg.sender);
         projectNametoprojectId[_name]=totalProjects;

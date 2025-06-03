@@ -16,7 +16,8 @@ contract Project is Ownable {
     uint256 public currentInvestedAmount;
     uint256 public daoId = 0;
     address public immutable tokenAddress;
-    uint256 public totalTokens;
+    uint256 public immutable proposalLimit;
+    uint256 public immutable totalTokens;
     bool isDaoCreated = false;
 
     uint public totalProposals = 0;
@@ -41,8 +42,9 @@ contract Project is Ownable {
     event ProposalCreated(
         uint256 indexed proposalId,
         address indexed ProjectAddress, 
-        uint256 daoId, 
-        address indexed investor
+        string proposalName,
+        address indexed creator,
+        uint256 fundsNeeded
     );
     event QVVoteCast(
         uint256 indexed proposalId,
@@ -68,12 +70,11 @@ contract Project is Ownable {
         address _founder,
         uint256 _budget,
         //uint256 _duration,
+        uint256 _proposalLimit,
         uint256 _investmentLimit,
-        // string memory daoName, 
-        // string memory daoDescription, 
-        // uint256 amountTokens,
         string memory tokenName,  
-        string memory tokenSymbol
+        string memory tokenSymbol,
+        uint256 _tokenAmount
         )
         Ownable(_founder) {
         id = _id;
@@ -81,17 +82,12 @@ contract Project is Ownable {
         founderName = _founderName;
         founder = _founder;
         budget = _budget;
+        proposalLimit = _proposalLimit;
+        totalTokens = _tokenAmount;
         //duration = _duration;
-        // amountTokens++;
-        // daoName="";
-        // daoDescription="";
-        // tokenName="";
-        // tokenSymbol="";
         investmentLimit = _investmentLimit;
         VotingTokens vt = new VotingTokens(tokenName,tokenSymbol);
         tokenAddress = address(vt);
-        // createDao(daoName, daoDescription, amountTokens, tokenName, tokenSymbol);
-        // addUsertoDao(founderName,founder);
     }
 
     struct dao {
@@ -118,37 +114,31 @@ contract Project is Ownable {
     mapping(address => uint256) public userWallettoUserId;
     mapping(uint256 => dao) public daoIdtoDao;
     mapping(uint256 => proposal) public proposalIdtoProposal;
-    mapping(uint256 => address) public daoIdtoMembers;
+    // mapping(uint256 => address) public daoIdtoMembers;
     mapping(uint256 => uint256[]) public daoIdtoProposals;
     mapping(uint256 => uint256[]) public proposalIdtoVoters;
-    mapping(uint256 => uint256[]) public userIdtoDaos;
-    mapping(uint256 => mapping(uint256 => uint256)) public quadraticYesMappings;
-    mapping(uint256 => mapping(uint256 => uint256)) public quadraticNoMappings;
+    // mapping(uint256 => uint256[]) public userIdtoDaos;
+    mapping(uint256 => uint256) public proposalIdToQuadraticYesMappings;
+    mapping(uint256 => uint256) public proposalIdToQuadraticNoMappings;
     mapping(address=>uint256) public userWallettoAmtInvested;
     mapping (uint256 => bool) public proposalIdToResult;
     mapping (uint256 => bool) public proposalToResultCalculated;
 
     
     function invest(string memory userName) public payable {
-        require(isDaoCreated==true,"Dao has not been created");
-        require(msg.value >= investmentLimit && currentInvestedAmount + msg.value <= budget, "Investment does not meet the minimum investment limit or it exceeds project budget limit");
+        require(isDaoCreated==true,"Dao has not been created.");
+        require(msg.value >= investmentLimit , "Investment does not meet the minimum investment limit.");
         address userWallet = msg.sender;
         
-        //If user has never invested before, create new user and check investment limit
-        if(userWallettoUserId[userWallet] == 0){
-            //emit user creation
-            addUsertoDao(userName,userWallet);
-        }
-
-        currentInvestedAmount += msg.value;
-
         //update mapping of userWallet to totalAmountInvested
         if(userWallettoAmtInvested[userWallet]!=0)
             userWallettoAmtInvested[userWallet]+=msg.value;
         else{
-            //sendNFT(userWallet,msg.value);
+            addUsertoDao(userName,userWallet);
             userWallettoAmtInvested[userWallet]=msg.value;
         } 
+
+        currentInvestedAmount += msg.value;
 
         //emit invested amount
         emit investmentMade(totalUser, userName, userWallet,msg.value);
@@ -164,6 +154,8 @@ contract Project is Ownable {
         // string memory tokenName, 
         // string memory tokenSymbol
         ) public onlyOwner{
+        require(isDaoCreated == false, "DAO is already created.");
+        daoId = id;
         dao memory newDao = dao({
             project_id: id,
             daoName: daoName,
@@ -172,6 +164,7 @@ contract Project is Ownable {
         });
         daoIdtoDao[++daoId] = newDao;
         addUsertoDao(founderName, founder);
+        isDaoCreated = true;
         
         // Emit an event for DAO creation
         emit DAOCreated(daoId, daoName, founder);
@@ -183,10 +176,10 @@ contract Project is Ownable {
         totalUser++;
         userIdtoUser[totalUser]=userName;
         userWallettoUserId[userWallet]=totalUser;
-        daoIdtoMembers[daoId]=userWallet;
-        userIdtoDaos[totalUser].push(daoId);
+        // daoIdtoMembers[daoId]=userWallet;
+        // userIdtoDaos[totalUser].push(daoId);
         VotingTokens vt = VotingTokens(tokenAddress);
-        vt.transferTokens(userWallet, daoIdtoDao[id].amountTokens);
+        vt.transferTokens(userWallet, totalTokens);
 
         // Emit an event for adding a user to the DAO
         emit MemberAddedToDAO(daoId, totalUser, userWallet);
@@ -202,6 +195,7 @@ contract Project is Ownable {
         uint256 endingTime,
         bool voteOnce
     ) public onlyOwner {
+        require(currentInvestedAmount >= proposalLimit && isDaoCreated == true, "Not enough investors for proposal creation");
         totalProposals++;
         uint256 proposerId = userWallettoUserId[msg.sender];
 
@@ -219,7 +213,7 @@ contract Project is Ownable {
         proposalIdtoProposal[totalProposals] = newProposal;
         daoIdtoProposals[daoId].push(totalProposals);
 
-        // emit ProposalCreated(address(this), daoId, msg.sender);
+        emit ProposalCreated(totalProposals, address(this), proposalTitleAndDesc, msg.sender, fundsNeeded);
     }
 
     function castVote(uint _proposalId, uint numTokens, bool _vote) external {
@@ -228,9 +222,9 @@ contract Project is Ownable {
         address funcCaller = msg.sender;
         numTokens = numTokens * (10 ** 18);
         uint256 userId = userWallettoUserId[funcCaller]; // Assumes mapping exists
-        uint256 tempDaoId = proposalIdtoProposal[_proposalId].daoId;
+        // uint256 tempDaoId = proposalIdtoProposal[_proposalId].daoId;
         if (proposalIdtoProposal[_proposalId].voteOnce) {
-            require(!hasVoted(userId, _proposalId) && checkMembership(tempDaoId, funcCaller), "User has already voted or you arent a member");
+            require(!hasVoted(userId, _proposalId) && checkMembership(funcCaller), "User has already voted or you arent a member");
         }
         require(vt.balanceOf(funcCaller) >= numTokens && numTokens >= proposalIdtoProposal[_proposalId].votingThreshold,"Insufficient tokens");
         require(block.timestamp >= proposalIdtoProposal[_proposalId].beginningTime && block.timestamp < proposalIdtoProposal[_proposalId].endingTime, "Voting isn't available");
@@ -242,9 +236,9 @@ contract Project is Ownable {
         uint256 numVotes = sqrt(numTokens);
 
         if (_vote) {
-            quadraticYesMappings[tempDaoId][_proposalId] += numVotes;
+            proposalIdToQuadraticYesMappings[_proposalId] += numVotes;
         } else {
-            quadraticNoMappings[tempDaoId][_proposalId] += numVotes;
+            proposalIdToQuadraticNoMappings[_proposalId] += numVotes;
         }
         emit QVVoteCast(_proposalId, userId, numVotes, _vote);
         // Mark user as having voted
@@ -260,13 +254,8 @@ contract Project is Ownable {
         }
     }
 
-    function checkMembership( uint256 _daoId, address _callerWalletAddress ) internal view returns (bool b) {
-        uint256 ID = userWallettoUserId[_callerWalletAddress];
-        for (uint i = 0; i < userIdtoDaos[ID].length; i++){
-            if (_daoId == userIdtoDaos[ID][i]) {
-                return true;
-            }
-        }
+    function checkMembership( address _callerWalletAddress ) internal view returns (bool b) {
+        return userWallettoUserId[_callerWalletAddress] != 0;
     }
 
     function hasVoted(
@@ -285,8 +274,8 @@ contract Project is Ownable {
         proposal memory tempProposal = proposalIdtoProposal[_proposalId];
         require(block.timestamp > proposalIdtoProposal[_proposalId].endingTime && !proposalToResultCalculated[_proposalId] && tempProposal.proposerId != 0, "Voting hasn't ended or Result is already calculated or proposal does not exist");
         
-        uint256 yesVotes = quadraticYesMappings[daoId][_proposalId];
-        uint256 noVotes = quadraticNoMappings[daoId][_proposalId];
+        uint256 yesVotes = proposalIdToQuadraticYesMappings[_proposalId];
+        uint256 noVotes = proposalIdToQuadraticNoMappings[_proposalId];
         bool tempResult;
         if (yesVotes > noVotes) {
             proposalIdToResult[_proposalId] = true;
@@ -311,6 +300,11 @@ contract Project is Ownable {
         // Emit an event for fund withdrawal
         emit FundsWithdrawn(proposalId, selectedProposal.fundsNeeded, msg.sender);
     }
+
+    // function renewTokens(address member) external onlyOwner{
+    //     address funcCaller = msg.sender;
+
+    // }
 
     function getOwner() public view returns(address){
         return founder;
