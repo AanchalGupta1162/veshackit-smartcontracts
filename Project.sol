@@ -94,7 +94,6 @@ contract Project is Ownable {
         uint256 project_id;
         string daoName;
         string daoDescription;
-        uint256 amountTokens;
     }
 
     struct proposal {
@@ -149,8 +148,7 @@ contract Project is Ownable {
     //createDao, add investors, dao can be created only once, only owner can create dao, dao can be created after the dao limit
     function createDao(
         string memory daoName, 
-        string memory daoDescription, 
-        uint256 amountTokens
+        string memory daoDescription
         // string memory tokenName, 
         // string memory tokenSymbol
         ) public onlyOwner{
@@ -159,10 +157,9 @@ contract Project is Ownable {
         dao memory newDao = dao({
             project_id: id,
             daoName: daoName,
-            daoDescription: daoDescription,
-            amountTokens: amountTokens
+            daoDescription: daoDescription
         });
-        daoIdtoDao[++daoId] = newDao;
+        daoIdtoDao[daoId] = newDao;
         addUsertoDao(founderName, founder);
         isDaoCreated = true;
         
@@ -195,7 +192,7 @@ contract Project is Ownable {
         uint256 endingTime,
         bool voteOnce
     ) public onlyOwner {
-        require(currentInvestedAmount >= proposalLimit && isDaoCreated == true, "Not enough investors for proposal creation");
+        require(currentInvestedAmount >= proposalLimit && isDaoCreated == true, "Not enough investment for proposal creation");
         totalProposals++;
         uint256 proposerId = userWallettoUserId[msg.sender];
 
@@ -205,9 +202,9 @@ contract Project is Ownable {
             proposalTitleAndDesc: proposalTitleAndDesc,
             votingThreshold: votingThreshold * 1000000000000000000,
             fundsNeeded: fundsNeeded,
-            beginningTime: beginningTime,
+            beginningTime: beginningTime+block.timestamp,
             daoId: daoId,
-            endingTime: endingTime,
+            endingTime: endingTime+block.timestamp,
             voteOnce: voteOnce
         });
         proposalIdtoProposal[totalProposals] = newProposal;
@@ -280,6 +277,8 @@ contract Project is Ownable {
         if (yesVotes > noVotes) {
             proposalIdToResult[_proposalId] = true;
             tempResult = true;
+            
+
         }
         else{
             proposalIdToResult[_proposalId] = false;
@@ -287,24 +286,32 @@ contract Project is Ownable {
         }
         proposalToResultCalculated[_proposalId] = true;
         emit ResultCalculated(_proposalId, tempProposal.proposerId, tempResult);
+        if(tempResult==true){
+            proposal memory selectedProposal = proposalIdtoProposal[_proposalId];
+            require( selectedProposal.fundsNeeded <= address(this).balance, "Proposal did not pass or insufficient contract balance");
+            payable(msg.sender).transfer(selectedProposal.fundsNeeded);
+            emit FundsWithdrawn(_proposalId, selectedProposal.fundsNeeded, msg.sender);
+        }
     }
 
-    // Function to withdraw funds based on proposal result
-    function withdrawFunds(uint256 proposalId) external onlyOwner {
-        proposal memory selectedProposal = proposalIdtoProposal[proposalId];
-        require(proposalIdToResult[proposalId] == true || selectedProposal.fundsNeeded <= address(this).balance, "Proposal did not pass or insufficient contract balance");
+    
 
-        // Transfer the funds to the owner
-        payable(msg.sender).transfer(selectedProposal.fundsNeeded);
+    // // Function to withdraw funds based on proposal result
+    // function withdrawFunds(uint256 proposalId) external onlyOwner {
+    //     proposal memory selectedProposal = proposalIdtoProposal[proposalId];
+    //     require(proposalIdToResult[proposalId] == true || selectedProposal.fundsNeeded <= address(this).balance, "Proposal did not pass or insufficient contract balance");
 
-        // Emit an event for fund withdrawal
-        emit FundsWithdrawn(proposalId, selectedProposal.fundsNeeded, msg.sender);
-    }
+    //     // Transfer the funds to the owner
+    //     payable(msg.sender).transfer(selectedProposal.fundsNeeded);
 
-    // function renewTokens(address member) external onlyOwner{
-    //     address funcCaller = msg.sender;
-
+    //     // Emit an event for fund withdrawal
+    //     emit FundsWithdrawn(proposalId, selectedProposal.fundsNeeded, msg.sender);
     // }
+
+    // // function renewTokens(address member) external onlyOwner{
+    // //     address funcCaller = msg.sender;
+
+    // // }
 
     function getOwner() public view returns(address){
         return founder;
