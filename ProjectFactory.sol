@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {Project} from "Project.sol";
 
 contract ProjectFactory{
+    
     uint256 totalProjects=0;
     mapping (uint256=> address) public projectIdToAddress;
     mapping (string=>uint256) public projectNametoprojectId;
@@ -17,37 +18,30 @@ contract ProjectFactory{
         string memory _name,
         string memory _founderName,
         uint256 _budget,
-        // uint256 _duration,
         uint256 _proposalLimit,
-        uint256 _investmentLimit,
-        // string memory daoName, 
-        // string memory daoDescription, 
-        // uint256 amountTokens,
+        uint256 _investmentLimit,        
         string memory tokenName,  
         string memory tokenSymbol,
         uint256 tokenAmount
-
         ) public {
         totalProjects++;
-        require(projectNametoprojectId[_name]==0 && _investmentLimit<_budget,"Project with this name already exists or Limits set exceed the project budget");
+        require(projectNametoprojectId[_name]==0,"Project with this name exists");
+        require(_investmentLimit<_budget &&_proposalLimit<_budget,"Limits exceed the project budget");
 
         // Create a new Project instance with the provided parameters.
         Project project = new Project(
-            totalProjects,  // The ID will be assigned automatically by Solidity
+            totalProjects,  
             _name,
             _founderName,
             msg.sender,
             _budget,
-            // _duration,
             _proposalLimit,
-            _investmentLimit,
-            // daoName, 
-            // daoDescription,  
-            // amountTokens,
+            _investmentLimit,            
             tokenName,    
             tokenSymbol,
             tokenAmount
         );
+
         emit ProjectCreated(totalProjects, msg.sender);
         projectNametoprojectId[_name]=totalProjects;
         projectIdToAddress[totalProjects]=address(project);
