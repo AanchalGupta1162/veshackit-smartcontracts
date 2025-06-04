@@ -217,18 +217,16 @@ contract Project is Ownable {
 
         VotingTokens vt = VotingTokens(tokenAddress);
         address funcCaller = msg.sender;
-        numTokens = numTokens * (10 ** 18);
         uint256 userId = userWallettoUserId[funcCaller]; // Assumes mapping exists
         // uint256 tempDaoId = proposalIdtoProposal[_proposalId].daoId;
         if (proposalIdtoProposal[_proposalId].voteOnce) {
             require(!hasVoted(userId, _proposalId) && checkMembership(funcCaller), "User has already voted or you arent a member");
         }
-        require(vt.balanceOf(funcCaller) >= numTokens && numTokens >= proposalIdtoProposal[_proposalId].votingThreshold,"Insufficient tokens");
+        require(vt.balanceOf(funcCaller) >= numTokens && numTokens*(10**18) >= proposalIdtoProposal[_proposalId].votingThreshold,"Insufficient tokens");
         require(block.timestamp >= proposalIdtoProposal[_proposalId].beginningTime && block.timestamp < proposalIdtoProposal[_proposalId].endingTime, "Voting isn't available");
 
 
 
-        vt.transferFrom(funcCaller,address(this),numTokens);
         // Quadratic Voting: votes = sqrt(numTokens)
         uint256 numVotes = sqrt(numTokens);
 
