@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {VotingTokens} from "VotingTokens.sol";
+// import {MyNFT} from "NFTs.sol";
 
 contract Project is Ownable {
 
@@ -13,7 +14,7 @@ contract Project is Ownable {
     uint256 public immutable budget;
     uint256 public immutable investmentLimit;
     uint256 public currentInvestedAmount;
-    address public immutable tokenAddress;
+    address private immutable tokenAddress;
     uint256 public immutable proposalLimit;
     uint256 public immutable tokenGivenToEveryone;
 
@@ -250,8 +251,7 @@ contract Project is Ownable {
         totalUser++;
         userIdtoUser[totalUser]=userName;
         userWallettoUserId[userWallet]=totalUser;
-        VotingTokens vt = VotingTokens(tokenAddress);
-        vt.transferTokens(userWallet, tokenGivenToEveryone);
+        VotingTokens(tokenAddress).transferTokens(userWallet, tokenGivenToEveryone);
 
         // Emit an event for adding a user to the DAO
         emit MemberAddedToDAO(daoId, totalUser, userWallet);
@@ -282,5 +282,10 @@ contract Project is Ownable {
         }
         return false;
     }
+
+    function getBalanceOfTokens(address user) external view returns(uint256){
+        return VotingTokens(tokenAddress).balanceOf(user);
+    }
+
 
 }

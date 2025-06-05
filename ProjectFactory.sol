@@ -24,9 +24,9 @@ contract ProjectFactory{
         string memory tokenSymbol,
         uint256 tokenAmount
         ) public {
-        totalProjects++;
         require(projectNametoprojectId[_name]==0,"Project with this name exists");
         require(_investmentLimit<_budget &&_proposalLimit<_budget,"Limits exceed the project budget");
+        totalProjects++;
 
         // Create a new Project instance with the provided parameters.
         Project project = new Project(
@@ -45,5 +45,9 @@ contract ProjectFactory{
         emit ProjectCreated(totalProjects, msg.sender);
         projectNametoprojectId[_name]=totalProjects;
         projectIdToAddress[totalProjects]=address(project);
+    }
+
+    function getNumberOfProjects() external view returns (uint256){
+        return totalProjects;
     }
 }
