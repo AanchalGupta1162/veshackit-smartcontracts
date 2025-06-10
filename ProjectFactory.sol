@@ -19,10 +19,8 @@ contract ProjectFactory{
         string memory _founderName,
         uint256 _budget,
         uint256 _proposalLimit,
-        uint256 _investmentLimit,        
-        string memory tokenName,  
-        string memory tokenSymbol,
-        uint256 tokenAmount
+        uint256 _investmentLimit,
+        uint256 _duration
         ) public {
         require(projectNametoprojectId[_name]==0,"Project with this name exists");
         require(_investmentLimit<_budget &&_proposalLimit<_budget,"Limits exceed the project budget");
@@ -36,10 +34,8 @@ contract ProjectFactory{
             msg.sender,
             _budget,
             _proposalLimit,
-            _investmentLimit,            
-            tokenName,    
-            tokenSymbol,
-            tokenAmount
+            _investmentLimit,
+            _duration
         );
 
         emit ProjectCreated(totalProjects, msg.sender);

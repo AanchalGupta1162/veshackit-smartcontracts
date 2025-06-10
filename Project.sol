@@ -14,15 +14,18 @@ contract Project is Ownable {
     uint256 public immutable budget;
     uint256 public immutable investmentLimit;
     uint256 public currentInvestedAmount;
-    address private immutable tokenAddress;
+    address private tokenAddress;
     uint256 public immutable proposalLimit;
-    uint256 public immutable tokenGivenToEveryone;
+    uint256 public tokenGivenToEveryone;
+    uint256 private  immutable duration;
+    string public description;
+    string public category;
 
     uint public totalProposals = 0;
     uint public totalUser = 0;
     uint public totalFundsWithdrawn = 0;
     bool internal isDaoCreated = false;
-    uint256 public daoId = 0;
+    uint256 public startTime = 0;
 
     event investmentMade(
         uint256 indexed userId,
@@ -71,12 +74,9 @@ contract Project is Ownable {
         string memory _founderName,
         address _founder,
         uint256 _budget,
-        //uint256 _duration,
+        uint256 _duration,
         uint256 _proposalLimit,
-        uint256 _investmentLimit,
-        string memory tokenName,  
-        string memory tokenSymbol,
-        uint256 _tokenAmount
+        uint256 _investmentLimit
         )
         Ownable(_founder) {
         id = _id;
@@ -85,14 +85,12 @@ contract Project is Ownable {
         founder = _founder;
         budget = _budget;
         proposalLimit = _proposalLimit;
-        tokenGivenToEveryone = _tokenAmount;
         investmentLimit = _investmentLimit;
-        VotingTokens vt = new VotingTokens(tokenName,tokenSymbol);
-        tokenAddress = address(vt);
+        duration = _duration;
+        startTime = block.timestamp;
     }
 
     struct dao {
-        uint256 project_id;
         string daoName;
         string daoDescription;
     }
@@ -104,7 +102,6 @@ contract Project is Ownable {
         uint256 votingThreshold;
         uint256 fundsNeeded;
         uint256 beginningTime;
-        uint256 daoId;
         uint256 endingTime;
         bool voteOnce;
     }
@@ -169,24 +166,33 @@ contract Project is Ownable {
 
     function createDao(
         string memory daoName, 
-        string memory daoDescription
+        string memory daoDescription,
+        string memory _description,  
+        string memory _category
         ) external onlyOwner{
         require(isDaoCreated == false, "DAO already created");
-        daoId = id;
+        
         dao memory newDao = dao({
-            project_id: id,
             daoName: daoName,
             daoDescription: daoDescription
         });
-        daoIdtoDao[daoId] = newDao;
+        category = _category;
+        description = _description;
+
+        daoIdtoDao[id] = newDao;
         addUsertoDao(founderName, founder);
         isDaoCreated = true;
         
         // Emit an event for DAO creation
-        emit DAOCreated(daoId, daoName, founder);
+        emit DAOCreated(id, daoName, founder);
         
     }
-
+    function setTokens(address Tokens, uint256 supply) external onlyOwner{
+        require(tokenAddress == address(0), "Invalid");
+        // VotingTokens vt = new VotingTokens(tokenName,tokenSymbol);
+        tokenGivenToEveryone = supply;
+        tokenAddress = address(Tokens);
+    }
     function createProposal(
         string memory proposalTitleAndDesc,
         uint256 votingThreshold,
@@ -209,12 +215,11 @@ contract Project is Ownable {
             votingThreshold: votingThreshold,
             fundsNeeded: fundsNeeded,
             beginningTime: beginningTime+block.timestamp,
-            daoId: daoId,
             endingTime: endingTime+block.timestamp,
             voteOnce: voteOnce
         });
         proposalIdtoProposal[totalProposals] = newProposal;
-        daoIdtoProposals[daoId].push(totalProposals);
+        daoIdtoProposals[id].push(totalProposals);
 
         emit ProposalCreated(totalProposals, address(this), proposalTitleAndDesc, msg.sender, fundsNeeded);
     }
@@ -254,7 +259,7 @@ contract Project is Ownable {
         VotingTokens(tokenAddress).transferTokens(userWallet, tokenGivenToEveryone);
 
         // Emit an event for adding a user to the DAO
-        emit MemberAddedToDAO(daoId, totalUser, userWallet);
+        emit MemberAddedToDAO(id, totalUser, userWallet);
         
     }    
 
