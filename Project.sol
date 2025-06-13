@@ -140,19 +140,19 @@ contract Project is Ownable {
         address funcCaller = msg.sender;
         require(checkMembership(funcCaller), "Not a DAO member");
 
-        VotingTokens vt = VotingTokens(tokenAddress);
         uint256 userId = userWallettoUserId[funcCaller]; // Assumes mapping exists
-        
         if (proposalIdtoProposal[_proposalId].voteOnce) {
             require(!hasVoted(userId, _proposalId) && checkMembership(funcCaller), "Already voted");
         }
+        
+        VotingTokens vt = VotingTokens(tokenAddress);
         require(vt.balanceOf(funcCaller) >= numTokens,"Insufficient tokens");
         require(numTokens <= proposalIdtoProposal[_proposalId].votingThreshold,"Excess tokens");
         require(block.timestamp >= proposalIdtoProposal[_proposalId].beginningTime && block.timestamp < proposalIdtoProposal[_proposalId].endingTime, "Voting unavailable");
 
         // Quadratic Voting: votes = sqrt(numTokens)
         uint256 numVotes = sqrt(numTokens);
-        vt.transferFrom(msg.sender, address(this), numTokens);
+        vt.transferFrom(msg.sender, address(this), numTokens*1e18);
         if (_vote) {
             proposalIdToQuadraticYesMappings[_proposalId] += numVotes;
         } else {
