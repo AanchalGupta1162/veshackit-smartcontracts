@@ -1,40 +1,62 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-contract User{
-    address public userWallet;
-    string public userName;
-    uint256 public userId;
-    string public userProfile;
+contract User {
+    uint256 public totalUsers;
 
-    uint256 totalUser=0;
-    
-    mapping (uint256=>string) usernames;
-    mapping (uint256=>string) profiles;
-    mapping (uint256=>address) usersWallets;
-    mapping (uint256=>uint256[]) usertoProjectInvested;
-    mapping (uint256=>uint256[]) usertoProjectOwned;
-
-    // getter setter kaise chahiye?
-
-    function addUser(string memory userName, string memory profile) external {
-        totalUser++;
-        userId=totalUser;
-        usernames[userId]=userName;
-        profiles[userId]=profile;
-        usersWallets[userId] = msg.sender;        
+    struct UserInfo {
+        address userWallet;
+        string userName;
+        string userProfile;
+        uint256[] investedProjects;
+        uint256[] ownedProjects;
     }
 
-    function changeUsername(uint256 Id,string memory newName) external onlyUser {
-        require(msg.sender == usersWallets[Id],"can change username");
-        usernames[userId]=newName;
+    mapping(address => UserInfo) public users;
+
+    modifier onlyUser(address userAddr) {
+        require(users[userAddr].userWallet == msg.sender, "Not authorized");
+        _;
     }
-    
-    function getUsernameById(uint256 userid) view external returns (string memory){
-        return usernames[userid];
+
+    function addUser(string memory name, string memory profile) external {
+        require(users[msg.sender].userWallet == address(0), "User already exists");
+        totalUsers++;
+        UserInfo storage user = users[msg.sender];
+        user.userWallet = msg.sender;
+        user.userName = name;
+        user.userProfile = profile;
+    // user.investedProjects and user.ownedProjects are empty by default
     }
-    
-    modifier onlyUser(){
-        require(msg.sender==usersWallets[userId]); _;
+
+    function changeUsername(address userAddr, string memory newName) external onlyUser(userAddr) {
+        users[userAddr].userName = newName;
+    }
+
+    function getUser(address userAddr) external view returns (
+        address,
+        string memory,
+        string memory
+    ) {
+        UserInfo memory u = users[userAddr];
+        return (u.userWallet, u.userName, u.userProfile);
+    }
+
+    function addInvestedProject(uint256 projectId) external {
+        require(users[msg.sender].userWallet != address(0), "User not found");
+        users[msg.sender].investedProjects.push(projectId);
+    }
+
+    function addOwnedProject(uint256 projectId) external {
+        require(users[msg.sender].userWallet != address(0), "User not found");
+        users[msg.sender].ownedProjects.push(projectId);
+    }
+
+    function getInvestedProjects(address userAddr) external view returns (uint256[] memory) {
+        return users[userAddr].investedProjects;
+    }
+
+    function getOwnedProjects(address userAddr) external view returns (uint256[] memory) {
+        return users[userAddr].ownedProjects;
     }
 }
